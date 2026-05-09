@@ -91,10 +91,10 @@ async def get_comment(db: AsyncSession, comment_id: int, page: int, limit: int, 
 
     skip = (page-1)*limit
 
-
+    Reply = aliased(Comment)
     like_count = select(func.count()).where(CommentReaction.comment_id == Comment.id, CommentReaction.type == "like").correlate(Comment).scalar_subquery()
     dislike_count = select(func.count()).where(CommentReaction.comment_id == Comment.id, CommentReaction.type=="dislike").correlate(Comment).scalar_subquery()
-    reply_count = select(func.count()).where(Comment.parent_id == Comment.id, Comment.is_active == True).correlate(Comment).scalar_subquery()
+    reply_count = select(func.count()).where(Reply.parent_id == Comment.id, Comment.is_active == True).correlate(Comment).scalar_subquery()
     is_liked = select(exists().where(CommentReaction.type=="like", CommentReaction.comment_id == Comment.id, CommentReaction.user_id==user_id)).scalar_subquery()
     is_disliked = select(exists().where(CommentReaction.type=="dislike", CommentReaction.comment_id==Comment.id, CommentReaction.user_id==user_id)).scalar_subquery()
     result = await db.execute(select(Comment, like_count, dislike_count, reply_count, is_liked, is_disliked).options(selectinload(Comment.reactions)).where(Comment.parent_id == comment_id).order_by(Comment.created_at.desc()).offset(skip).limit(limit))
@@ -105,7 +105,7 @@ async def get_comment(db: AsyncSession, comment_id: int, page: int, limit: int, 
         "total_pages": total_pages,
         "current_page": page,
         "limit": limit,
-        "has_previous": False if page == 0 else True,
+        "has_previous": False if page == 1 else True,
         "has_next": False if page == total_pages else True,
         "data":[
             {
@@ -130,7 +130,7 @@ async def get_comment(db: AsyncSession, comment_id: int, page: int, limit: int, 
 async def update(db: AsyncSession, comment_id: int, author_id: int, content: str):
     try:
         result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.is_active == True, Comment.author_id == author_id))
-        comment = result.scalar_one_or_none()
+        comment = result.scalar_one()
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment didn't found")
     
@@ -156,7 +156,7 @@ async def update(db: AsyncSession, comment_id: int, author_id: int, content: str
 
 async def soft_delete_comment(db: AsyncSession, comment_id: int, author_id: int):
     result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.is_active == True, Comment.author_id == author_id))
-    comment = result.scalar()
+    comment = result.scalar_one_or_none()
 
     if not comment:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No comment found")

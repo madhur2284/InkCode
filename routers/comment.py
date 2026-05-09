@@ -41,7 +41,7 @@ async def fetch_comments(current_user = Depends(get_current_user), db: AsyncSess
         "total_pages": pagination_data.get("total_pages"),
         "current_page": page,
         "limit": limit,
-        "has_previous": False if page == 0 else True,
+        "has_previous": False if page == 1 else True,
         "has_next": False if page == pagination_data.get("total_pages") else True,
         "data": comments
     }
@@ -69,5 +69,5 @@ async def soft_delete(db: AsyncSession = Depends(get_db), comment_id: int = Path
         comment = await soft_delete_comment(db, comment_id, current_user.id)
         return {"message": f"comment deted successfully"}
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_BAD_REQUEST, detail="Comment couldn't updated")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Comment couldn't updated")
     

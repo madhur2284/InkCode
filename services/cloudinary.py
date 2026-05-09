@@ -1,5 +1,6 @@
 import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
+import asyncio
 
 async def cloudinary_upload(avatar_image: UploadFile) -> dict:
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
@@ -14,7 +15,7 @@ async def cloudinary_upload(avatar_image: UploadFile) -> dict:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Max size of file should be 2MB only")
     
     try:
-        result = cloudinary.uploader.upload(
+        result = await asyncio.to_thread(cloudinary.uploader.upload,
             content,
             folder="blog_profile_picture",
             transformation=[
@@ -35,7 +36,7 @@ async def cloudinary_upload(avatar_image: UploadFile) -> dict:
 
 async def cloudinary_delete(avatar_public_id: str):
     try:
-        cloudinary.uploader.destroy(public_id=avatar_public_id)
+        await asyncio.to_thread(cloudinary.uploader.destroy, public_id=avatar_public_id)
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="failed to delete old avatar")
 

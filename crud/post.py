@@ -163,3 +163,18 @@ async def get_posts_pagination(db: AsyncSession, user_id: int, limit: int, skip:
             for row in rows
         ]
     }
+
+
+async def post_pagination(db: AsyncSession, limit: int, page: int):
+    result = await db.execute(select(func.count()).where(Post.is_active == True, Post.status == "published"))
+    total_rows = result.scalar_one()
+    total_pages = math.ceil(total_rows/limit)
+    if page > total_pages:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"This page didn't exist")
+    
+    skip_count = (page-1)*limit
+
+    return{
+        "total_pages": total_pages,
+        "skip": skip_count
+    }

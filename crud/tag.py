@@ -34,6 +34,7 @@ async def delete_tag_by_slug(slug: str, db: AsyncSession):
     
     try:
         await db.delete(tag)
+        await db.commit()
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error:{e}")

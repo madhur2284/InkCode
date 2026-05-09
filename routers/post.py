@@ -8,7 +8,7 @@ from services.auth import get_current_user
 from services.slug import create_unique_slug
 from crud.tag import get_tag_by_slug
 from typing import List
-from crud.post import add_post, add_tag_in_post, get_post_detail, get_post_for_update, get_posts_pagination
+from crud.post import add_post, add_tag_in_post, get_post_detail, get_post_for_update, get_posts_pagination, post_pagination
 from services.reading_time import reading_time
 from services.pagination_calculate import pagination_calculate
 
@@ -37,7 +37,7 @@ async def create_post(post: PostCreate , db: AsyncSession = Depends(get_db), cur
 
 @router.get(path='/posts', status_code=status.HTTP_200_OK, response_model=PostsPagination)
 async def get_posts(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = Query(default=10, description="Number of Posts per page", gt=0), page: int = Query(default=1, description="Page Number", gt=0)):
-    pagination = await pagination_calculate(db, page, limit, Post)
+    pagination = await post_pagination(db, limit, page)
     if pagination.get("total_pages") == 0:
         return {
             "total_pages": 0,

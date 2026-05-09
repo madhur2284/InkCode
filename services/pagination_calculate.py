@@ -9,7 +9,7 @@ async def pagination_calculate(db: AsyncSession, page: int, limit: int, model) -
     total_rows = result.scalar()
     total_pages = math.ceil(total_rows/limit)
     if page > total_pages:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Max Page Count is only {total_pages}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"This page didn't exist")
     
     skip_count = (page-1)*limit
 
