@@ -12,10 +12,13 @@ from models.db_models import User
 
 
 context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Unauthorized")
+
     try:
         payload = decode_token(token)
     except JWTError:
@@ -28,6 +31,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="UNAUTHORIZED")
     
     return user
+
+
+async def get_optional_current_user(db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User | None:
+    if not token:
+        return None
+    
+    payload = decode_token(token)
+
+    if not payload:
+        return None
+    
+    result = await db.execute(select(User).where(User.id == payload.get("id"), User.is_active == True, User.token_version == payload.get("token_version")))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        return None
+    
+    return current_user
 
     
 async def require_admin(user: User = Depends(get_current_user)):

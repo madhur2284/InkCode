@@ -1,8 +1,9 @@
 from pydantic import Field, EmailStr
 from typing import Optional, Literal
-from sqlalchemy import Integer, String, Column, ForeignKey, Text, DateTime, func, Boolean
+from sqlalchemy import Integer, String, Column, ForeignKey, Text, DateTime, func, Boolean, Index
 from sqlalchemy.orm import relationship
 from database import Base
+from sqlalchemy.dialects.postgresql import TSVECTOR
 
 
 
@@ -38,6 +39,8 @@ class Post(Base):
     slug = Column(Text, unique=True, nullable=False, index=True)
     author_id = Column(Integer, ForeignKey("users.id"), index=True)
     content = Column(Text, nullable=False)
+    search_vector = Column(TSVECTOR, nullable=True)
+    ai_summary = Column(Text, nullable=True)
     status= Column(String, nullable=False, default="draft") #"draft" or "published" or "archived"
     reading_time = Column(Integer, nullable=False, server_default='0')
     is_active = Column(Boolean, nullable=False, server_default='True')
@@ -51,7 +54,10 @@ class Post(Base):
     comments = relationship("Comment", back_populates="post")
     reactions = relationship("Reaction", back_populates="post")
     bookmarks = relationship("Bookmark", back_populates="post")
-
+    
+    __table_args__ = (
+        Index("post_serch_idx", "search_vector", postgresql_using="gin"),
+    )
 
 class Tag(Base):
     __tablename__="tags"
