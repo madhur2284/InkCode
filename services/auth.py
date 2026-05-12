@@ -36,17 +36,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 async def get_optional_current_user(db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User | None:
     if not token:
         return None
-    
-    payload = decode_token(token)
+    try:
+        payload = decode_token(token)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unuthorized")
 
     if not payload:
         return None
     
     result = await db.execute(select(User).where(User.id == payload.get("id"), User.is_active == True, User.token_version == payload.get("token_version")))
     current_user = result.scalar_one_or_none()
-
-    if not current_user:
-        return None
     
     return current_user
 
