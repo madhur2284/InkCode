@@ -71,6 +71,7 @@ async def get_post_detail(slug: str, db: AsyncSession, current_user_id):
         "title": row[0].title,
         "slug": row[0].slug,
         "content": row[0].content,
+        "ai_summary": row[0].ai_summary,
         "status": row[0].status,
         "reading_time": row[0].reading_time,
         "author": row[0].author,
@@ -178,3 +179,20 @@ async def post_pagination(db: AsyncSession, limit: int, page: int):
         "total_pages": total_pages,
         "skip": skip_count
     }
+
+
+async def update_summary(db: AsyncSession, summary: str, post_id: int):
+    post = await db.execute(select(Post).where(Post.id == post_id, Post.is_active==True))
+    post = post.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No Post Found")
+    
+    try:
+        post.ai_summary = summary
+        await db.commit()
+        return {"message": "summary updates successfully"}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {e}")
+    
+    

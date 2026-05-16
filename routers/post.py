@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, status, Depends, HTTPException, Path, Query, BackgroundTasks
 from schemas.post import PostDetailResponse, PostCreate, PostCreateResponse, PostUpdate, PostsPagination
 from schemas.tag import TagResposne
 from database import get_db
@@ -11,13 +11,15 @@ from typing import List
 from crud.post import add_post, add_tag_in_post, get_post_detail, get_post_for_update, get_posts_pagination, post_pagination
 from services.reading_time import reading_time
 from services.pagination_calculate import pagination_calculate
+from services.ai_summary import generate_ai_summary
+from services.ai_tag_suggestions import generate_ai_suggestion
 
 
 router = APIRouter(prefix="/post", tags=["post"])
 
 
 @router.post(path="/create", status_code=status.HTTP_201_CREATED, response_model=PostDetailResponse)
-async def create_post(post: PostCreate , db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_post(background_tasks: BackgroundTasks, post: PostCreate , db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         slug = await create_unique_slug(post.title, db, Post)
     except:
@@ -32,6 +34,8 @@ async def create_post(post: PostCreate , db: AsyncSession = Depends(get_db), cur
             await add_tag_in_post(db, Tag.id, result.id)
 
     result = await get_post_detail(slug, db, current_user.id)
+    if result.content:
+        background_tasks.add_task(generate_ai_summary, result.id, result.title, result.content)
     return result
 
 
@@ -62,7 +66,7 @@ async def get_post(slug: str = Path(description="slug of the post"), db: AsyncSe
 
 
 @router.patch(path='/{slug}', status_code=status.HTTP_200_OK, response_model=PostCreateResponse)
-async def update_post(Update_post: PostUpdate, current_user = Depends(get_current_user), slug: str = Path(description="slug of the post"), db: AsyncSession = Depends(get_db)):
+async def update_post(background_tasks: BackgroundTasks, Update_post: PostUpdate, current_user = Depends(get_current_user), slug: str = Path(description="slug of the post"), db: AsyncSession = Depends(get_db)):
     post = await get_post_for_update(slug, current_user.id, db)
     update_post_dict = Update_post.model_dump(exclude_none = True)
     
@@ -80,6 +84,9 @@ async def update_post(Update_post: PostUpdate, current_user = Depends(get_curren
     try:
         await db.commit()
         await db.refresh(post)
+        
+        if update_post_dict.get("content"):
+            background_tasks.add_task(generate_ai_summary, post.id, post.title, update_post_dict.get("content"))
         return post
     except Exception as e:
         await db.rollback()
@@ -98,6 +105,8 @@ async def delete_post(db: AsyncSession = Depends(get_db), current_user = Depends
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error: {e}")
     
 
-
-    
+@router.post(path='/tag_suggestion', status_code=status.HTTP_200_OK, response_model=List)
+async def tag_suggestions(title: str, content: str, current_user = Depends(get_current_user)) -> list:
+    tags = await generate_ai_suggestion(title, content)
+    return tags
 
