@@ -7,20 +7,49 @@ from fastapi.middleware.cors import CORSMiddleware
 from collections import defaultdict
 import time
 from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
+file_handler = logging.FileHandler('logging.log')
+
+formatter = logging.Formatter('Middleware:%(asctime)s:%(levelname)s:%(message)s')
+file_handler.setFormatter(formatter)
+
+logger.setLevel(logging.INFO)
+
+logger.addHandler(file_handler)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting server")
+    logger.info("Starting server")
     yield
+    logger.info("Closing server")
     await engine.dispose()
 
 
 app = FastAPI(lifespan=lifespan)
 
-
 rate_limit = 60
 windows_start = 60
 requests_count: dict = defaultdict(list)
+
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    duration = time.time() - start_time
+    logger.info(
+        f"{request.method} "
+        f"{request.url.path} "
+        f"status={response.status_code} "
+        f"duration={duration: .3f}s"
+    )
+    return response
+
+
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
