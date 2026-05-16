@@ -41,6 +41,7 @@ class PostDetailResponse(BaseModel):
     title: str
     slug: str
     content: Optional[str] = Field(default=None)
+    ai_summary: Optional[str] = Field(default=None)
     status: Literal["draft", "published", "archived"]
     reading_time: int
     author: PostAuthor

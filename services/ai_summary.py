@@ -1,15 +1,22 @@
 from openai import AsyncOpenAI
 from config import settings
-import json
 import asyncio
-from fastapi import HTTPException, status
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from database import AsyncSessionLocal
+from models.db_models import Post
+from crud.post import update_summary
+import logging
 
-async def generate_ai_summary(title: str, content: str):
+logger = logging.getLogger(__name__)
+
+client = AsyncOpenAI(
+    api_key=settings().NVIDIA_API_KEY,
+    base_url="https://integrate.api.nvidia.com/v1"
+)
+
+async def generate_ai_summary(post_id: int, title: str, content: str):
     try:
-        client = AsyncOpenAI(
-            api_key=settings().NVIDIA_API_KEY,
-            base_url="https://integrate.api.nvidia.com/v1"
-        )
         model="mistralai/mistral-medium-3.5-128b"
 
         response = await client.chat.completions.create(
@@ -35,15 +42,17 @@ async def generate_ai_summary(title: str, content: str):
             max_tokens=300
         )
 
-        summary = response.choices[0].message.content
-        return summary
+        summary = response.choices[0].message.content.strip()
+        async with AsyncSessionLocal() as db:
+            result = await update_summary(db, summary, post_id)
+            return result.get("message", "")     
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error: {e}")
+        logger.error("summary Generation Failed")
     
 
 
 if __name__ == "__main__":
-    asyncio.run(generate_ai_summary("Async Python Beyond Syntax: Event Loops, Backpressure, and Concurrency at Scale", """Async programming in Python is often misunderstood as merely adding async and await keywords, but the real power lies in how the event loop orchestrates cooperative multitasking. Unlike thread-based concurrency, asyncio minimizes context-switching overhead by allowing coroutines to voluntarily yield control during I/O waits. This makes it highly efficient for network-heavy systems such as API gateways, websocket servers, distributed crawlers, and real-time streaming applications.
+    asyncio.run(generate_ai_summary(post_id=0, title="Async Python Beyond Syntax: Event Loops, Backpressure, and Concurrency at Scale", content = """Async programming in Python is often misunderstood as merely adding async and await keywords, but the real power lies in how the event loop orchestrates cooperative multitasking. Unlike thread-based concurrency, asyncio minimizes context-switching overhead by allowing coroutines to voluntarily yield control during I/O waits. This makes it highly efficient for network-heavy systems such as API gateways, websocket servers, distributed crawlers, and real-time streaming applications.
 
 However, production-grade async systems require deeper understanding than coroutine syntax. Poorly managed tasks can create hidden bottlenecks through event loop starvation, unbounded task spawning, or blocking synchronous calls inside coroutines. Concepts like backpressure, cancellation propagation, connection pooling, and structured concurrency become critical when scaling services.
 
