@@ -6,7 +6,7 @@ from schemas.comment import CommentBasicResponse
 from typing import List
 from fastapi import HTTPException, status
 from services.pagination_calculate import pagination_calculate
-from routers.notification import queue
+from services.notification import initiate_notification
 import math
 
 async def add_comment(content: str, user_id: int, post_id: int, parent_id: int | None, db: AsyncSession) -> dict:
@@ -177,24 +177,26 @@ async def create_comment_notification(db: AsyncSession, avatar_url: str, usernam
     comment = Comment()
     post = Post()
     if parent_id:
-        notify.type = "comment_reply"
         result = await db.execute(select(Comment).options(selectinload(Comment.parent)).where(Comment.id == comment_id))
         comment = result.scalar_one_or_none()
-        notify.recipient_id = comment.parent.id
+        if user_id == comment.author_id:
+            return
+        notify.recipient_id = comment.parent.author_id
+        notify.type = "comment_reply"
     else:
-        notify.type = "post_comment"
         result = await db.execute(select(Post).where(Post.id == post_id))
-        post = result.scalar_one_or_none
+        post = result.scalar_one_or_none()
+        if post.author_id == user_id:
+            return
         notify.recipient_id = post.author_id
         notify.post_id = post_id
+        notify.type = "post_comment"
 
     notify.actor_id = user_id
     notify.comment_id = comment_id
 
-    try:
-        await db.commit()
-        await db.refresh(notify)
-        await queue.put({"notification_id": notify.id, "type": notify.type, "avatar_url": avatar_url, "username": username, "user_id": user_id, "content": comment_id, "message": f"{username} comment on your post {post.title}" if not parent_id else f"{username} reply on your comment {comment.content}"})
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {e}")
-
+    
+    db.add(notify)
+    await db.commit()
+    await db.refresh(notify)
+    await initiate_notification(notify.recipient_id, {"notification_id": str(notify.id), "type": notify.type, "avatar_url": avatar_url, "username": username, "user_id": user_id, "content": comment_id, "message": f"{username} comment on your post {post.title}" if not parent_id else f"{username} reply on your comment {comment.content}"})

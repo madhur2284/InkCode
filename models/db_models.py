@@ -33,8 +33,8 @@ class User(Base):
     followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following")
     followings = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower")
     comment_reaction = relationship("CommentReaction", back_populates="user")
-    receive_notifications = relationship("Notification", foreign_keys= "Notification.recipient", back_populates='recipient')
-    sent_notifications = relationship("Notification", foreign_keys="Notification.actor", back_populates="actor")
+    receive_notifications = relationship("Notification", foreign_keys= "Notification.recipient_id", back_populates='recipient')
+    sent_notifications = relationship("Notification", foreign_keys="Notification.actor_id", back_populates="actor")
 
 
 
@@ -148,7 +148,7 @@ class NotificationType(str, Enum):
     POST_DISLIKE = "post_dislike"
     
     COMMENT_LIKE = "comment_like"
-    COMMENT_DISLIKE = "commnet_dislike"
+    COMMENT_DISLIKE = "comment_dislike"
 
     POST_COMMENT = "post_comment"
     COMMENT_REPLY = "comment_reply"
