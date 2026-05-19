@@ -3,7 +3,7 @@ from schemas.post_reaction import PostReactionCreate
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from services.auth import get_current_user
-from crud.post_reaction import create_post_reaction, delete_reaction
+from crud.post_reaction import create_post_reaction, delete_reaction, post_reaction_notification
 
 router = APIRouter(prefix="/post_reaction", tags=["post_reaction"])
 
@@ -11,6 +11,7 @@ router = APIRouter(prefix="/post_reaction", tags=["post_reaction"])
 async def add_reaction(reaction_detail: PostReactionCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)) -> str:
     try:
         message = await create_post_reaction(db, reaction_detail.post_id, current_user.id, reaction_detail.type)
+        await post_reaction_notification(db, current_user.avatar_url, current_user.username, current_user.id, reaction_detail.post_id, reaction_detail.type)
         return message.get("Message", "")
     except Exception as e:
         raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail=f"Error: {e}")

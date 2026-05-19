@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models.db_models import Follow, User
+from models.db_models import Follow, User, Notification
+from routers.notification import queue
 from fastapi import HTTPException, status
 
 async def create_follow(db: AsyncSession, follower_id: int, following_id: int) -> dict[str, str]:
@@ -40,3 +41,15 @@ async def delete_follow(db: AsyncSession, follower_id: int, following_id: int) -
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {e}")
+    
+
+async def create_follow_notification(db: AsyncSession, follower_id: int, following_id: int, avatar_url: str, username: str):
+    notify = Notification(type="follow", actor_id=follower_id, recipient_id=following_id)
+    try:
+        await db.commit()
+        await db.refresh(notify)
+        await queue.put({"notification_id": notify.id, "type": notify.type, "avatar_url": avatar_url, "username": username, "user_id": follower_id, "content": following_id, "message": f"{username} followed you"})
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {e}")
+    
