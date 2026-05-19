@@ -6,7 +6,7 @@ from schemas.comment import CommentCreate, CommentBasicResponse, CommentCreateRe
 from database import get_db
 from models.db_models import Comment
 from services.auth import get_current_user
-from crud.comment import add_comment, get_comments, get_comment, update, soft_delete_comment
+from crud.comment import add_comment, get_comments, get_comment, update, soft_delete_comment, create_comment_notification
 from services.pagination_calculate import pagination_calculate
 
 
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/comment", tags=["comment"])
 @router.post(path='/', status_code=status.HTTP_201_CREATED, response_model=CommentCreateResponse)
 async def create_comment(comment: CommentCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await add_comment(comment.content, current_user.id, comment.post_id, comment.parent_id, db)
+    await create_comment_notification(db, current_user.avatar_url, current_user.username, current_user.id, comment.post_id, comment.parent_id, result.id)
     return result
 
 

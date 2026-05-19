@@ -1,9 +1,13 @@
+from uuid6 import uuid7
 from pydantic import Field, EmailStr
 from typing import Optional, Literal
 from sqlalchemy import Integer, String, Column, ForeignKey, Text, DateTime, func, Boolean, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from database import Base
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
+from enum import Enum
+import uuid
+from datetime import datetime
 
 
 
@@ -29,6 +33,8 @@ class User(Base):
     followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following")
     followings = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower")
     comment_reaction = relationship("CommentReaction", back_populates="user")
+    receive_notifications = relationship("Notification", foreign_keys= "Notification.recipient", back_populates='recipient')
+    sent_notifications = relationship("Notification", foreign_keys="Notification.actor", back_populates="actor")
 
 
 
@@ -54,6 +60,7 @@ class Post(Base):
     comments = relationship("Comment", back_populates="post")
     reactions = relationship("Reaction", back_populates="post")
     bookmarks = relationship("Bookmark", back_populates="post")
+    notifications = relationship("Notification", back_populates="post")
     
     __table_args__ = (
         Index("post_serch_idx", "search_vector", postgresql_using="gin"),
@@ -104,6 +111,7 @@ class Comment(Base):
     replies = relationship("Comment", back_populates="parent")
     parent = relationship("Comment", back_populates="replies", remote_side=[id])
     reactions = relationship("CommentReaction", back_populates="comment")
+    notifications = relationship("Notification", back_populates="comment")
 
 
 class CommentReaction(Base):
@@ -135,8 +143,65 @@ class Follow(Base):
     following = relationship("User", foreign_keys=[following_id], back_populates="followers")
 
 
+class NotificationType(str, Enum):
+    POST_LIKE = "post_like"
+    POST_DISLIKE = "post_dislike"
+    
+    COMMENT_LIKE = "comment_like"
+    COMMENT_DISLIKE = "commnet_dislike"
+
+    POST_COMMENT = "post_comment"
+    COMMENT_REPLY = "comment_reply"
+
+    FOLLOW = "follow"
 
 
+class Notification(Base):
+    __tablename__= "notifications"
+    id : Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid7
+    )
+    type: Mapped[NotificationType] = mapped_column(
+        String,
+        nullable=False
+    )
+    actor_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('users.id'),
+        nullable=False
+    )
+    recipient_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('users.id'),
+        nullable=False
+    )
+    post_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('posts.id'),
+        nullable=True
+    )
+    comment_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('comments.id'),
+        nullable=True
+    )
+    is_read: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable = False,
+        server_default=func.now()
+    )
+
+    actor = relationship("User", foreign_keys=[actor_id], back_populates="sent_notifications")
+    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="receive_notifications")
+    post = relationship("Post", back_populates="notifications")
+    comment = relationship("Comment", back_populates="notifications")
 
 
 
