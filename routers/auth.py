@@ -68,7 +68,7 @@ async def logout(user: User = Depends(get_current_user), db: AsyncSession = Depe
 @router.post(path='/change_password', status_code=status.HTTP_200_OK)
 async def change_password(password: ChangePassword, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     if not await verify_password(password.old_password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Wrong Password")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wrong Password")
 
     try:
         hashed_password = await hash_password(password.new_password)

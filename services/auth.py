@@ -81,6 +81,7 @@ def generate_access_token(payload: dict) -> str:
     to_encode = payload.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=settings().ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode["exp"] = expire
+    to_encode["type"] = "access_token"
     token = jwt.encode(
         to_encode,
         key=settings().SECRET_KEY,
