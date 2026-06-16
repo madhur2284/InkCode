@@ -90,3 +90,7 @@ app.include_router(admin_stats.router)
 @app.get(path='/', status_code = status.HTTP_200_OK)
 async def home():
     return {"Message": "Welcome to InkCode"}
+
+@app.get(path='/health', status_code= status.HTTP_200_OK)
+async def health():
+    return {"status": "ok"}

@@ -1,0 +1,3 @@
+services:
+  blog-api:
+    restart: always

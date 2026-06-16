@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
     CLOUDINARY_CLOUD_NAME: str
     NVIDIA_API_KEY: str
+    POSTGRES_PASSWORD: str
     model_config = SettingsConfigDict(env_file=".env")
 
 

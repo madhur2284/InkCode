@@ -1,0 +1,44 @@
+services:
+  blog-api:
+    build:
+      context: .
+      target: runner
+    container_name: blog-api
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - blog-networks
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+    env_file:
+      - .env
+    
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - blog-data:/var/lib/postgresql/data
+    container_name: blog-db
+    networks:
+      - blog-networks
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: blog
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+
+networks:
+  blog-networks:
+    driver: bridge
+
+
+volumes:
+  blog-data:
+    

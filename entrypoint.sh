@@ -1,7 +1,14 @@
+#!/bin/bash
 set -e
 
-echo "Running migration......."
+echo "Running migrations..."
 alembic upgrade head
 
-echo "starting server........."
-uvicorn main:app --host 0.0.0.0 --port 8000
+echo "Starting server..."
+exec gunicorn main:app \
+    -k uvicorn.workers.UvicornWorker \
+    --workers 2 \
+    --bind 0.0.0.0:$PORT \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -
