@@ -13,7 +13,8 @@ engine = create_async_engine(
     pool_recycle=1800,               #Recycle connections after 1800 s or 30  min to prevent stale connection issue
     pool_pre_ping=True,              #Before proceeding with the connection first check the connection is working or not
     echo=False,                      #Didn't print the sql commands written by sqlalchemy in console
-    future=True                      
+    future=True,
+    connect_args={"ssl": "require"}                     
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

@@ -8,7 +8,7 @@ echo "Starting server..."
 exec gunicorn main:app \
     -k uvicorn.workers.UvicornWorker \
     --workers 2 \
-    --bind 0.0.0.0:$PORT \
+    --bind 0.0.0.0:${PORT:-8000} \
     --timeout 120 \
     --access-logfile - \
     --error-logfile -
