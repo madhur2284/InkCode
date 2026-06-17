@@ -34,7 +34,7 @@ async def create_post(background_tasks: BackgroundTasks, post: PostCreate , db: 
             await add_tag_in_post(db, Tag.id, result.id)
 
     result = await get_post_detail(slug, db, current_user.id)
-    if result.content:
+    if result["content"]:
         background_tasks.add_task(generate_ai_summary, result.id, result.title, result.content)
     return result
 

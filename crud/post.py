@@ -47,9 +47,9 @@ async def get_post_detail(slug: str, db: AsyncSession, current_user_id):
     dislike_count_query = select(func.count()).where(and_(Reaction.type == "dislike", Reaction.post_id == Post.id)).correlate(Post).scalar_subquery()
     comments_count_query = select(func.count()).where(and_(Comment.post_id == Post.id, Comment.is_active == True)).correlate(Post).scalar_subquery()
     bookmark_count_query = select(func.count()).where(Bookmark.post_id == Post.id).correlate(Post).scalar_subquery()
-    is_liked_query = select(exists().where(Reaction.type == "like", Reaction.post_id == Post.id, Reaction.user_id == current_user_id)).scalar_subquery()
-    is_disliked_query = select(exists().where(Reaction.type == "dislike", Reaction.post_id == Post.id, Reaction.user_id == current_user_id)).scalar_subquery()
-    is_bookmarked_query = select(exists().where(Bookmark.user_id == current_user_id, Bookmark.post_id == Post.id)).scalar_subquery()
+    is_liked_query = select(exists().where(Reaction.type == "like", Reaction.post_id == Post.id, Reaction.user_id == current_user_id)).correlate(Post).scalar_subquery()
+    is_disliked_query = select(exists().where(Reaction.type == "dislike", Reaction.post_id == Post.id, Reaction.user_id == current_user_id)).correlate(Post).scalar_subquery()
+    is_bookmarked_query = select(exists().where(Bookmark.user_id == current_user_id, Bookmark.post_id == Post.id)).correlate(Post).scalar_subquery()
     
     result = await db.execute(select(
         Post,
