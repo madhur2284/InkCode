@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str
     NVIDIA_API_KEY: str
     POSTGRES_PASSWORD: str
+    EMAIL_HOST: str
+    EMAIL_PORT: int
+    EMAIL_USERNAME: str
+    EMAIL_PASSWORD: str
+    EMAIL_FROM: str
+    ENVIRONMENT:str
     model_config = SettingsConfigDict(env_file=".env")
 
 

@@ -14,7 +14,7 @@ engine = create_async_engine(
     pool_pre_ping=True,              #Before proceeding with the connection first check the connection is working or not
     echo=False,                      #Didn't print the sql commands written by sqlalchemy in console
     future=True,
-    connect_args={"ssl": "require"}                     
+    connect_args={"ssl": "require" if settings().ENVIRONMENT=="Production" else "disable"}                     
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

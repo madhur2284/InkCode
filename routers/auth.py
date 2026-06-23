@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, UploadFile, File, status, HTTPException
+from fastapi import APIRouter, status, Depends, UploadFile, File, status, HTTPException, BackgroundTasks
 from schemas.auth import UserResponse, UserCreate, Token, UserLogin, ChangePassword, UserUpdate, RefreshToken
 from typing import Optional
 from models.db_models import User
@@ -10,11 +10,12 @@ from crud.auth import get_user_by_email, get_user_by_username, add_user, get_use
 from services.slug import create_unique_slug
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError
+from services.email import send_welcome_email, build_welcome_email, build_opt_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post(path='/register', status_code=status.HTTP_201_CREATED, response_model=UserResponse)
-async def register(form_data : UserCreate = Depends(UserCreate.form_data), avatar_image: Optional[UploadFile] = File(default=None), db: AsyncSession = Depends(get_db)):
+async def register(background_tasks: BackgroundTasks, form_data : UserCreate = Depends(UserCreate.form_data), avatar_image: Optional[UploadFile] = File(default=None), db: AsyncSession = Depends(get_db)):
     if await get_user_by_username(form_data.username, db):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exist")
     if await get_user_by_email(form_data.email, db):
@@ -35,6 +36,8 @@ async def register(form_data : UserCreate = Depends(UserCreate.form_data), avata
         user = await add_user(email=form_data.email, username=form_data.username, bio=form_data.bio, hashed_password=hashed_password, avatar_url=avatar_url, avatar_public_id = avatar_public_id, db=db, slug=slug)
         if not user:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to register user")
+        msg = await build_welcome_email(form_data.username, form_data.email)
+        background_tasks.add_task(send_welcome_email, msg, form_data.username, form_data.email)
         return user
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to register user: {e}")
